@@ -2,9 +2,15 @@
 
 namespace App\Controller;
 
+use App\Entity\Post;
+use App\Form\PostType;
 use App\Repository\PostRepository;
+use Cocur\Slugify\Slugify;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+
 
 class PostController extends AbstractController
 {
@@ -27,14 +33,86 @@ class PostController extends AbstractController
             'posts' => $posts
         ]);
     }
-
+    
     /**
-     * @Route("/post", name="post")
+     * @Route("/posts/new", name="new_blog_post")
      */
-    public function index()
+    public function addPost(Request $request, Slugify $slugify)
     {
-        return $this->render('post/index.html.twig', [
-            'controller_name' => 'PostController',
+        $post = new Post();
+        $form = $this->createForm(PostType::class, $post);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $post->setSlug($slugify->slugify($post->getTitle()));
+            $post->setCreatedAt(new \DateTime());
+
+            $em = $this->getDoctrine()->getManager();
+            $em->persist($post);
+            $em->flush();
+
+            return $this->redirectToRoute('blog_posts');
+        }
+        return $this->render('posts/new.html.twig', [
+            'form' => $form->createView()
         ]);
     }
+    
+    /**
+     * @Route("/posts/search", name="blog_search")
+     */
+    public function search(Request $request)
+    {
+        $query = $request->query->get('search');
+        $posts = $this->postRepository->searchByQuery($query);
+
+        return $this->render('blog/query_post.html.twig', [
+            'posts' => $posts
+        ]);
+    }
+
+    /**
+     * @Route("/posts/{slug}", name="blog_show")
+     */
+    public function post(Post $post)
+    {
+        return $this->render('posts/show.html.twig', [
+            'post' => $post
+        ]);
+    }
+
+    /**
+     * @Route("/posts/{slug}/edit", name="blog_post_edit")
+     */
+    public function edit(Post $post, Request $request, Slugify $slugify)
+    {
+         $form = $this->createForm(PostType::class, $post);
+         $form->handleRequest($request);
+
+         if ($form->isSubmitted() && $form->isValid()) {
+            $post->setSlug($slugify->slugify($post->getTitle()));
+            $this->getDoctrine()->getManager()->flush();
+
+            return $this->redirectToRoute('blog_show', [
+                'slug' => $post->getSlug()
+            ]);
+         }
+
+         return $this->render('posts/new.html.twig', [
+             'form' => $form->createView()
+         ]);
+    }
+
+     /**
+     * @Route("/posts/{slug}/delete", name="blog_post_delete")
+     */
+    public function delete(Post $post)
+    {     
+        $em = $this->getDoctrine()->getManager();
+        $em->remove($post);
+        $em->flush();
+
+        return $this->redirectToRoute('blog_posts');
+    }
+
 }
