@@ -12,12 +12,12 @@ class AppFixtures extends Fixture
 {
     private $faker;
 
-    private $slug;
+    private $slugger;
 
     public function __construct(SluggerInterface $slugger)
     {
         $this->faker = Factory::create();
-        $this->slug = $slugger;
+        $this->slugger = $slugger;
     }
     public function load(ObjectManager $manager): void
     {
@@ -28,7 +28,7 @@ class AppFixtures extends Fixture
         for ($i = 1; $i < 20; $i++) {
             $post = new Post();
             $post->setTitle($this->faker->text(100));
-            $post->setSlug($this->slug->slug($post->getTitle())->lower());
+            $post->setSlug($this->slugger->slug($post->getTitle())->lower());
             $post->setBody($this->faker->text(1000));
             $post->setCreatedAt($this->faker->dateTime);
 

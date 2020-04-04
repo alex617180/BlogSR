@@ -3,15 +3,19 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\UserRepository")
  * @ORM\Table(name="user_users")
+ * @UniqueEntity(fields={"email"}, message="Аккаунт с таким Email уже существует")
  */
 class User implements UserInterface
 {
+    public const ROLE_USER = 'ROLE_USER';
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -44,11 +48,35 @@ class User implements UserInterface
      */
     private $password;
 
-     /**
-     * @ORM\Column(type="string", length=180, unique=true)
-     * @Assert\Email()
+    /**
+     * @ORM\Column(type="string", length=180, unique=true)     
+     * @Assert\Length(min=3)
+     * @Assert\Email(message = "The email '{{ value }}' is not a valid.")
      */
     private $email;
+
+    /**     
+     * @ORM\Column(type="integer", options={"default": 1})
+     */
+    private $status;
+
+    /**     
+     * @ORM\Column(type="integer", options={"default": 0})
+     */
+    private $verifiedEmail;
+
+    /**
+     * @ORM\Column(type="string")
+     */
+    private $confirmationEmail;
+
+    /**
+     * @var string
+     *
+     * @Assert\NotBlank()
+     * @Assert\Length(min=6)
+     */
+    private $plainPassword;
 
     public function getId(): ?int
     {
@@ -88,8 +116,11 @@ class User implements UserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
-        $roles[] = 'ROLE_USER';
+
+        // guarantees that a user always has at least one role for security
+        if (empty($roles)) {
+            $roles[] = self::ROLE_USER;
+        }
 
         return array_unique($roles);
     }
@@ -128,6 +159,54 @@ class User implements UserInterface
         return $this;
     }
 
+    public function getStatus(): ?int
+    {
+        return $this->status;
+    }
+
+    public function setStatus(int $status): self
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    public function getVerifiedEmail(): ?int
+    {
+        return $this->verifiedEmail;
+    }
+
+    public function setVerifiedEmail(int $verifiedEmail): self
+    {
+        $this->verifiedEmail = $verifiedEmail;
+
+        return $this;
+    }
+
+    public function getConfirmationEmail(): string
+    {
+        return $this->confirmationEmail;
+    }
+
+    public function setConfirmationEmail(string $confirmationEmail): self
+    {
+        $this->confirmationEmail = $confirmationEmail;
+
+        return $this;
+    }
+    
+    public function getPlainPassword()
+    {
+        return $this->plainPassword;
+    }
+    
+    public function setPlainPassword(string $plainPassword): self
+    {
+        $this->plainPassword = $plainPassword;
+
+        return $this;
+    }
+
     /**
      * @see UserInterface
      */
@@ -142,6 +221,6 @@ class User implements UserInterface
     public function eraseCredentials()
     {
         // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
+        $this->plainPassword = null;
     }
 }

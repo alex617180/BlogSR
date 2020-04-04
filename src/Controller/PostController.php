@@ -5,11 +5,11 @@ namespace App\Controller;
 use App\Entity\Post;
 use App\Form\PostType;
 use App\Repository\PostRepository;
-use Cocur\Slugify\Slugify;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\String\Slugger\SluggerInterface;
 
 
 class PostController extends AbstractController
@@ -23,7 +23,7 @@ class PostController extends AbstractController
     }
 
     /**
-     * @Route("/posts", name="blog_posts")
+     * @Route("/posts", name="homepage")
      */
     public function posts()
     {
@@ -37,21 +37,21 @@ class PostController extends AbstractController
     /**
      * @Route("/posts/new", name="new_blog_post")
      */
-    public function addPost(Request $request, Slugify $slugify)
+    public function addPost(Request $request, SluggerInterface $slugger)
     {
         $post = new Post();
         $form = $this->createForm(PostType::class, $post);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $post->setSlug($slugify->slugify($post->getTitle()));
+            $post->setSlug($slugger->slug($post->getTitle())->lower());
             $post->setCreatedAt(new \DateTime());
 
             $em = $this->getDoctrine()->getManager();
             $em->persist($post);
             $em->flush();
 
-            return $this->redirectToRoute('blog_posts');
+            return $this->redirectToRoute('homepage');
         }
         return $this->render('posts/new.html.twig', [
             'form' => $form->createView()
@@ -84,13 +84,13 @@ class PostController extends AbstractController
     /**
      * @Route("/posts/{slug}/edit", name="blog_post_edit")
      */
-    public function edit(Post $post, Request $request, Slugify $slugify)
+    public function edit(Post $post, Request $request, SluggerInterface $slugger)
     {
          $form = $this->createForm(PostType::class, $post);
          $form->handleRequest($request);
 
          if ($form->isSubmitted() && $form->isValid()) {
-            $post->setSlug($slugify->slugify($post->getTitle()));
+            $post->setSlug($slugger->slug($post->getTitle())->lower());
             $this->getDoctrine()->getManager()->flush();
 
             return $this->redirectToRoute('blog_show', [
@@ -112,7 +112,7 @@ class PostController extends AbstractController
         $em->remove($post);
         $em->flush();
 
-        return $this->redirectToRoute('blog_posts');
+        return $this->redirectToRoute('homepage');
     }
 
 }
